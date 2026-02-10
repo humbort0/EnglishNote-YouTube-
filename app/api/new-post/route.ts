@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+/**
+ * API endpoint to create a new blog post.
+ * Expects JSON: { title: string, content: string, tags?: string[] }
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { title, content, tags } = body;
 
+    // Basic validation
     if (!title || !content) {
       return NextResponse.json(
         { error: 'Title and content are required' },
@@ -13,6 +18,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Insert into Supabase
     const { data, error } = await supabase
       .from('posts')
       .insert([
@@ -30,7 +36,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { message: 'Post created successfully', data },
+      {
+        message: 'Post created successfully',
+        data: data ? data[0] : null
+      },
       { status: 201 }
     );
   } catch (err) {
