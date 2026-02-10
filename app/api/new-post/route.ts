@@ -1,43 +1,108 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-server';
+import { CreatePostInput, ApiResponse, Post } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { title, content, tags } = body;
+    // Parse request body
+    const body: CreatePostInput = await request.json();
+    const { title, content, tags = [] } = body;
 
+    // Validate required fields
     if (!title || !content) {
-      return NextResponse.json(
+      return NextResponse.json<ApiResponse<null>>(
         { error: 'Title and content are required' },
         { status: 400 }
       );
     }
 
-    const { data, error } = await supabase
+    // Validate title length
+    if (title.length > 200) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Title must be 200 characters or less' },
+        { status: 400 }
+      );
+    }
+
+    // Validate content length
+    if (content.length > 50000) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Content must be 50,000 characters or less' },
+        { status: 400 }
+      );
+    }
+
+    // Validate tags
+    if (tags && !Array.isArray(tags)) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Tags must be an array' },
+        { status: 400 }
+      );
+    }
+
+    if (tags && tags.length > 10) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Maximum 10 tags allowed' },
+        { status: 400 }
+      );
+    }
+
+    // Insert post into database
+    const { data, error } = await supabaseAdmin
       .from('posts')
       .insert([
         {
-          title,
-          content,
-          tags: tags || [],
+          title: title.trim(),
+          content: content.trim(),
+          tags: tags.map((tag: string) => tag.trim()).filter(Boolean),
         },
       ])
-      .select();
+      .select()
+      .single();
 
     if (error) {
       console.error('Supabase error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Failed to create post. Please try again.' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(
-      { message: 'Post created successfully', data },
+    return NextResponse.json<ApiResponse<Post>>(
+      { 
+        message: 'Post created successfully', 
+        data: data as Post 
+      },
       { status: 201 }
     );
   } catch (err) {
     console.error('API error:', err);
-    return NextResponse.json(
+    
+    // Handle JSON parse errors
+    if (err instanceof SyntaxError) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Invalid JSON format' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json<ApiResponse<null>>(
       { error: 'Internal Server Error' },
       { status: 500 }
     );
   }
+}
+
+// Optional: Add GET endpoint to verify API is working
+export async function GET() {
+  return NextResponse.json(
+    {
+      message: 'Blog API is running',
+      endpoint: '/api/new-post',
+      method: 'POST',
+      requiredFields: ['title', 'content'],
+      optionalFields: ['tags'],
+    },
+    { status: 200 }
+  );
 }

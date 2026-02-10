@@ -1,12 +1,5 @@
 import React from 'react';
-
-export interface Post {
-  id: number;
-  title: string;
-  content: string;
-  created_at: string;
-  tags?: string[];
-}
+import { Post } from '@/lib/types';
 
 interface PostCardProps {
   post: Post;
