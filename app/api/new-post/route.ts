@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-server';
+import { supabaseAdmin, isSupabaseServerConfigured } from '@/lib/supabase-server';
 import { CreatePostInput, ApiResponse, Post } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
+    // Check if Supabase is configured
+    if (!isSupabaseServerConfigured()) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Supabase is not configured. Please set environment variables.' },
+        { status: 500 }
+      );
+    }
+
     // Parse request body
     const body: CreatePostInput = await request.json();
     const { title, content, tags = [] } = body;
@@ -95,6 +103,8 @@ export async function POST(request: Request) {
 
 // Optional: Add GET endpoint to verify API is working
 export async function GET() {
+  const isConfigured = isSupabaseServerConfigured();
+  
   return NextResponse.json(
     {
       message: 'Blog API is running',
@@ -102,6 +112,7 @@ export async function GET() {
       method: 'POST',
       requiredFields: ['title', 'content'],
       optionalFields: ['tags'],
+      supabaseConfigured: isConfigured,
     },
     { status: 200 }
   );

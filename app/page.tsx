@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { PostCard } from '@/components/PostCard';
 import { Post } from '@/lib/types';
 
@@ -6,6 +6,12 @@ export const revalidate = 0; // Always fetch fresh data
 
 async function getPosts(): Promise<Post[]> {
   try {
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase is not configured');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('posts')
       .select('*')
@@ -25,6 +31,7 @@ async function getPosts(): Promise<Post[]> {
 
 export default async function Home() {
   const posts = await getPosts();
+  const isConfigured = isSupabaseConfigured();
 
   return (
     <main className="min-h-screen p-8 md:p-16 lg:p-24 bg-white font-sans">
@@ -38,7 +45,17 @@ export default async function Home() {
       </header>
 
       <div className="max-w-5xl mx-auto">
-        {posts.length > 0 ? (
+        {!isConfigured ? (
+          <div className="text-center py-20 bg-yellow-50 rounded-lg border border-yellow-200">
+            <p className="text-yellow-700 mb-2 font-medium">⚠️ Configuration Required</p>
+            <p className="text-sm text-yellow-600">
+              Please set up your Supabase environment variables in Vercel.
+            </p>
+            <p className="text-xs text-yellow-500 mt-2">
+              Required: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+            </p>
+          </div>
+        ) : posts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {posts.map((post) => (
               <PostCard key={post.id} post={post} />
